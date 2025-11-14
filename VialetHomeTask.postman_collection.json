@@ -1,0 +1,662 @@
+{
+	"info": {
+		"_postman_id": "ac9e1ca0-622e-44e3-9099-24e3e5460b6e",
+		"name": "VialetHomeTask",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "11392712"
+	},
+	"item": [
+		{
+			"name": "CreateUser",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Generate a unique user for each run\r",
+							"const rand = Math.floor(Math.random() * 1_000_000);\r",
+							"\r",
+							"pm.environment.set(\"email\", `testuser+${rand}@example.com`);\r",
+							"pm.environment.set(\"password\", \"Test@1234\");\r",
+							"pm.environment.set(\"phone\", `555000${rand}`);\r",
+							"\r",
+							"// Reset KYC stage at the beginning of the flow\r",
+							"pm.environment.unset(\"kycStage\");"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200 or 201\", function () {\r",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);\r",
+							"});\r",
+							"\r",
+							"// Parse JSON\r",
+							"let res;\r",
+							"pm.test(\"Response is valid JSON\", function () {\r",
+							"    res = pm.response.json();\r",
+							"    pm.expect(res).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"// Wrapper checks\r",
+							"pm.test(\"Success flag is true\", function () {\r",
+							"    pm.expect(res.success).to.be.true;\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Message is present\", function () {\r",
+							"    pm.expect(res.message).to.be.a(\"string\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Data object exists\", function () {\r",
+							"    pm.expect(res.data).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const data = res.data;\r",
+							"\r",
+							"// Data checks\r",
+							"pm.test(\"userId exists\", function () {\r",
+							"    pm.expect(data.userId, \"Missing userId\").to.exist;\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Email matches request\", function () {\r",
+							"    pm.expect(data.email).to.equal(pm.environment.get(\"email\"));\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Phone matches request\", function () {\r",
+							"    pm.expect(data.phone).to.equal(pm.environment.get(\"phone\"));\r",
+							"});\r",
+							"\r",
+							"pm.test(\"createdAt exists\", function () {\r",
+							"    pm.expect(data.createdAt).to.be.a(\"string\");\r",
+							"});\r",
+							"\r",
+							"// KYC-specific\r",
+							"pm.test(\"Initial KYC status is no_documents\", function () {\r",
+							"    pm.expect(data.kycStatus).to.equal(\"no_documents\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Initial kycVerifiedAt is null\", function () {\r",
+							"    pm.expect(data.kycVerifiedAt).to.be.null;\r",
+							"});\r",
+							"\r",
+							"// Save for next requests\r",
+							"pm.environment.set(\"userId\", data.userId);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"{{email}}\",\r\n  \"password\": \"{{password}}\",\r\n  \"phone\": \"{{phone}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/users",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get User Information",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							"\r",
+							"const res = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Success flag is true\", function () {\r",
+							"    pm.expect(res.success).to.be.true;\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Data object exists\", function () {\r",
+							"    pm.expect(res.data).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const data = res.data;\r",
+							"\r",
+							"//pm.test(\"UserId matches env\", function () {\r",
+							"  //  pm.expect(data.userId).to.equal(pm.environment.get(\"userId\"));\r",
+							"//});\r",
+							"\r",
+							"pm.test(\"Email matches env\", function () {\r",
+							"    pm.expect(data.email).to.equal(pm.environment.get(\"email\"));\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Phone matches env\", function () {\r",
+							"    pm.expect(data.phone).to.equal(pm.environment.get(\"phone\"));\r",
+							"});\r",
+							"\r",
+							"// Before any KYC upload, you expect this to still be no_documents\r",
+							"pm.test(\"KYC status is no_documents before upload\", function () {\r",
+							"    pm.expect(data.kycStatus).to.equal(\"no_documents\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"kycVerifiedAt is null when no documents\", function () {\r",
+							"    pm.expect(data.kycVerifiedAt).to.be.null;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/users/{{userId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{userId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "UploadKYCdocuments",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"console.log(\"KYC upload status:\", pm.response.code);\r",
+							"console.log(\"Raw response body:\", pm.response.text());\r",
+							"\r",
+							"let res;\r",
+							"try {\r",
+							"    res = pm.response.json();\r",
+							"    console.log(\"Parsed JSON:\", res);\r",
+							"} catch (e) {\r",
+							"    console.log(\"Response not JSON:\", e);\r",
+							"}\r",
+							"\r",
+							"// Basic sanity: no server error\r",
+							"pm.test(\"No server error\", function () {\r",
+							"    pm.expect(pm.response.code).to.not.equal(500);\r",
+							"});\r",
+							"\r",
+							"// Has success flag\r",
+							"pm.test(\"Has success flag\", function () {\r",
+							"    pm.expect(res).to.have.property(\"success\");\r",
+							"});\r",
+							"\r",
+							"// Only go deeper if data exists\r",
+							"if (res && res.data) {\r",
+							"    const data = res.data;\r",
+							"    console.log(\"data object:\", data);\r",
+							"\r",
+							"    pm.test(\"Data object present\", function () {\r",
+							"        pm.expect(data).to.be.an(\"object\");\r",
+							"    });\r",
+							"\r",
+							"    if (data.kycStatus !== undefined) {\r",
+							"        pm.test(\"KYC status is documents_under_verification\", function () {\r",
+							"            pm.expect(data.kycStatus).to.equal(\"documents_under_verification\");\r",
+							"        });\r",
+							"    }\r",
+							"\r",
+							"    // ✅ Save the upload time so we can measure 20 seconds later\r",
+							"    pm.environment.set(\"kycUploadTime\", Date.now().toString());\r",
+							"} else {\r",
+							"    console.log(\"No data field in response\");\r",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "documentType",
+							"value": "valid",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "document",
+							"type": "file",
+							"src": "postman-cloud:///1f0c00de-1856-4910-89f9-4b911e4988ce"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/kyc/{{userId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"kyc",
+						"{{userId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetKYCstatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							"\r",
+							"const res = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Success flag is true\", function () {\r",
+							"    pm.expect(res.success).to.be.true;\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Data object exists\", function () {\r",
+							"    pm.expect(res.data).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const data = res.data;\r",
+							"const status = data.kycStatus;\r",
+							"\r",
+							"console.log(\"Current KYC status:\", status);\r",
+							"console.log(\"Full data:\", data);\r",
+							"\r",
+							"// 1) Allow for actual statuses your API uses\r",
+							"const allowedStatuses = [\r",
+							"    \"no_documents\",\r",
+							"    \"documents_under_verification\",\r",
+							"    \"documents_verified\", // keep if your API ever uses it\r",
+							"    \"valid\"               // ✅ your actual \"verified\" state\r",
+							"];\r",
+							"\r",
+							"pm.test(\"KYC status is valid\", function () {\r",
+							"    pm.expect(status).to.be.oneOf(allowedStatuses);\r",
+							"});\r",
+							"\r",
+							"// 2) 20-second rule:\r",
+							"// Treat \"valid\" (and optionally \"documents_verified\") as the final verified state\r",
+							"const finalVerifiedStatuses = [\"valid\", \"documents_verified\"];\r",
+							"\r",
+							"if (finalVerifiedStatuses.includes(status)) {\r",
+							"    const uploadTimeStr = pm.environment.get(\"kycUploadTime\");\r",
+							"\r",
+							"    pm.test(\"Upload time is stored\", function () {\r",
+							"        pm.expect(uploadTimeStr, \"kycUploadTime env var missing\").to.exist;\r",
+							"    });\r",
+							"\r",
+							"    if (uploadTimeStr && data.kycVerifiedAt) {\r",
+							"        const uploadTime = parseInt(uploadTimeStr, 10);          // ms since epoch (from Date.now)\r",
+							"        const verifiedAtMs = Date.parse(data.kycVerifiedAt);     // ms from ISO string\r",
+							"        const diffMs = verifiedAtMs - uploadTime;\r",
+							"\r",
+							"        console.log(\"Upload time (ms):\", uploadTime);\r",
+							"        console.log(\"VerifiedAt (ms):\", verifiedAtMs);\r",
+							"        console.log(\"Diff (ms):\", diffMs);\r",
+							"\r",
+							"        pm.test(\"Verification completed within 20 seconds\", function () {\r",
+							"            // Allow up to 20,000 ms between upload and verification\r",
+							"            pm.expect(diffMs).to.be.at.most(20000);\r",
+							"        });\r",
+							"    } else {\r",
+							"        console.log(\"Missing kycUploadTime or kycVerifiedAt; cannot check 20-second rule.\");\r",
+							"    }\r",
+							"} else {\r",
+							"    console.log(\"KYC not yet verified, current status:\", status);\r",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/kyc/{{userId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"kyc",
+						"{{userId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "MissingEmailAddress",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Generate a unique user for each run\r",
+							"const rand = Math.floor(Math.random() * 1_000_000);\r",
+							"\r",
+							"//pm.environment.set(\"email\", `testuser+${rand}@example.com`);\r",
+							"pm.environment.set(\"password\", \"Test@1234\");\r",
+							"pm.environment.set(\"phone\", `555000${rand}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 400 for missing email\", function () {\r",
+							"    pm.expect(pm.response.code).to.eql(400);\r",
+							"});\r",
+							"\r",
+							"const res = pm.response.json();\r",
+							"pm.test(\"Error mentions missing email\", function () {\r",
+							"    pm.expect(res.message).to.match(/email|required/i);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"{{email}}\",\r\n  \"password\": \"{{password}}\",\r\n  \"phone\": \"{{phone}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/users",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "InvalidEmailFormat",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Generate a unique user for each run\r",
+							"const rand = Math.floor(Math.random() * 1_000_000);\r",
+							"\r",
+							"pm.environment.set(\"email\", `testuser+${rand}@example`);\r",
+							"pm.environment.set(\"password\", \"Test@1234\");\r",
+							"pm.environment.set(\"phone\", `555000${rand}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 400 for invalid email format\", function () {\r",
+							"    pm.expect(pm.response.code).to.eql(400);\r",
+							"});\r",
+							"\r",
+							"const res = pm.response.json();\r",
+							"pm.test(\"Error mentions invalid email\", function () {\r",
+							"    pm.expect(res.message).to.match(/email|invalid/i);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"password\": \"{{password}}\",\r\n  \"phone\": \"{{phone}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/users",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "MissingPhoneNumber",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Generate a unique user for each run\r",
+							"const rand = Math.floor(Math.random() * 1_000_000);\r",
+							"\r",
+							"pm.environment.set(\"email\", `testuser+${rand}@example.com`);\r",
+							"pm.environment.set(\"password\", \"Test@1234\");\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 400 for missing phone\", function () {\r",
+							"    pm.expect(pm.response.code).to.eql(400);\r",
+							"});\r",
+							"\r",
+							"const res = pm.response.json();\r",
+							"pm.test(\"Error mentions missing phone\", function () {\r",
+							"    pm.expect(res.message).to.match(/phone|required/i);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"{{email}}\",\r\n  \"password\": \"{{password}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/users",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "MissingPassword",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Generate a unique user for each run\r",
+							"const rand = Math.floor(Math.random() * 1_000_000);\r",
+							"\r",
+							"pm.environment.set(\"email\", `testuser+${rand}@example.com`);\r",
+							"pm.environment.set(\"phone\", `555000${rand}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 400 for missing password\", function () {\r",
+							"    pm.expect(pm.response.code).to.eql(400);\r",
+							"});\r",
+							"\r",
+							"const res = pm.response.json();\r",
+							"pm.test(\"Error mentions missing password\", function () {\r",
+							"    pm.expect(res.message).to.match(/password|required/i);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"{{email}}\",\r\n  \"phone\": \"{{phone}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/users",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
